@@ -21,19 +21,24 @@ BACKGROUND = (77, 31, 0)
 FOOD = (240, 105, 35)
 SNAKE_COLOR_1 = (155, 50, 175)
 SNAKE_COLOR_2 = (187, 186, 176)
+BLACK = (0, 0, 0)
 
 BLOCK_SIZE = 20
-SPEED = 15
+SPEED = 100
 
 REWARD_REWARD_POINTS = 15
-REWARD_ERROR_POINTS = -15
+REWARD_ERROR_COLLISION_POINTS = -10
+REWARD_ERROR_NOFOOD_POINTS = -15
 
+WIDTH = 600
+HEIGHT = 600
+TOP_BAR = 40
 
 MAX_FRAMES = 100
 
 class Game:
     
-    def __init__(self, w=1280, h=720):
+    def __init__(self, w=WIDTH, h=HEIGHT):
         self.w = w
         self.h = h
         # init display
@@ -58,6 +63,8 @@ class Game:
         self.food = Point(x, y)
         if self.food in self.snake:
             self._place_food()
+        if self.food.y < TOP_BAR:
+            self._place_food()
 
     def update_frame(self):
         self.frame += 1
@@ -69,7 +76,7 @@ class Game:
                 quit()
         
         # 2. move
-        derection_array = [Direction.EAST, Direction.WEST, Direction.NORTH, Direction.SOUTH]
+        derection_array = [Direction.EAST, Direction.SOUTH, Direction.WEST, Direction.NORTH]
         index = derection_array.index(self.direction)
 
         if np.array_equal(action, [1, 0, 0]):
@@ -81,21 +88,30 @@ class Game:
             index = (index - 1) % 4
             action = derection_array[index] # left turn
 
-        self._move(action) # update the head
+
+        self.direction = action
+        self._move(self.direction) # update the head
         self.snake.insert(0, self.head)
         
         # 3. check if game over
         reward = 0
         game_over = False
-        if self._is_collision() or self.frame > MAX_FRAMES:
+        if self.check_collision():
             print("Game over")
             game_over = True
-            reward = REWARD_ERROR_POINTS
+            reward = REWARD_ERROR_COLLISION_POINTS
+            return reward, game_over, self.score
+        
+        if self.frame > MAX_FRAMES:
+            print("Game over")
+            game_over = True
+            reward = REWARD_ERROR_NOFOOD_POINTS
             return reward, game_over, self.score
             
         # 4. place new food or just move
         if self.head == self.food:
             self.score += 1
+            self.frame = 0
             reward = REWARD_REWARD_POINTS
             self._place_food()
         else:
@@ -129,7 +145,7 @@ class Game:
         
         # 3. check if game over
         game_over = False
-        if self._is_collision():
+        if self.check_collision():
             print("Game over")
             game_over = True
             return game_over, self.score
@@ -147,15 +163,17 @@ class Game:
         # 6. return game over and score
         return game_over, self.score
     
-    def _is_collision(self,point=None):
+    def check_collision(self,point=None):
         if point is None:
             point = self.head
-        # hits boundary
-        if point.x > self.w - BLOCK_SIZE or point.x < 0 or point.y > self.h - BLOCK_SIZE or point.y < 0:
-            return True
-        # hits itself
+
+                # hits itself
         if point in self.snake[1:]:
             return True
+        # hits boundary
+        if point.x > self.w - BLOCK_SIZE or point.x < 0 or point.y > self.h - BLOCK_SIZE or point.y < TOP_BAR:
+            return True
+
         
         return False
         
@@ -177,28 +195,28 @@ class Game:
             
         pygame.draw.rect(self.display, FOOD, pygame.Rect(self.food.x, self.food.y, BLOCK_SIZE, BLOCK_SIZE))
 
-        text = font.render("| Frames: " + str(self.frame), True, WHITE)
-        self.display.blit(text, [100, 0])
+        pygame.draw.rect(self.display, BLACK, pygame.Rect(0, 0, WIDTH, TOP_BAR))
+        text = font.render("| Frames without food found: " + str(self.frame), True, WHITE)
+        self.display.blit(text, [100, 3])
         
         text = font.render("Score: " + str(self.score), True, WHITE)
-        self.display.blit(text, [0, 0])
+        self.display.blit(text, [10, 3])
         pygame.display.flip()
         
-    def _move(self, direction):       
+    def _move(self, action):       
         x = self.head.x
         y = self.head.y
-        if direction == Direction.EAST:
+        if action == Direction.EAST:
             x += BLOCK_SIZE
-        elif direction == Direction.WEST:
+        elif action == Direction.WEST:
             x -= BLOCK_SIZE
-        elif direction == Direction.SOUTH:
+        elif action == Direction.SOUTH:
             y += BLOCK_SIZE
-        elif direction == Direction.NORTH:
+        elif action == Direction.NORTH:
             y -= BLOCK_SIZE
             
         self.head = Point(x, y)
             
-
 if __name__ == '__main__':
     game = Game()
     
