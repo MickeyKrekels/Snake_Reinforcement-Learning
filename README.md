@@ -11,6 +11,5 @@ The code for the snake game is from the repo "python-fun" from the user python-e
 Train use:
 ```
 python ./RL-agent/main.py
-
 ```
 
